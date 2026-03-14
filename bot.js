@@ -2,7 +2,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const OpenAI = require("openai");
 
 const TELEGRAM_TOKEN = process.env.8696799139:AAF9PiXcHzw72yuF6fSSHMDXzFFGY7XXC10;
-const OPENAI_API_KEY = process.env.https://platform.openai.com/api-keys;
+const OPENAI_API_KEY = process.env.https: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;
 
 if (!TELEGRAM_TOKEN) {
   throw new Error("Нет BOT_TOKEN в Render Environment Variables");
