@@ -1,7 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const OpenAI = require("openai");
 
-const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
+const TELEGRAM_TOKEN = process.env.8696799139:AAF9PiXcHzw72yuF6fSSHMDXzFFGY7XXC10;
 const OPENAI_API_KEY = process.env.https://platform.openai.com/api-keys;
 
 if (!TELEGRAM_TOKEN) {
