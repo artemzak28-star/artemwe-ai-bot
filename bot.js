@@ -8,23 +8,31 @@ const openai = new OpenAI({
 });
 
 bot.on("message", async (msg) => {
+
   const chatId = msg.chat.id;
   const text = msg.text;
 
   if (!text) return;
 
   try {
-    const response = await openai.responses.create({
+
+    const response = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
-      input: text
+      messages: [
+        { role: "system", content: "Ты AI помощник по имени Artemwe." },
+        { role: "user", content: text }
+      ]
     });
 
-    const reply = response.output_text;
+    const reply = response.choices[0].message.content;
 
     bot.sendMessage(chatId, reply);
 
   } catch (error) {
+
     console.log(error);
     bot.sendMessage(chatId, "Ошибка AI 🤖");
+
   }
+
 });
