@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import traceback
 import requests
 from flask import Flask
 from telegram import Update
@@ -9,7 +10,7 @@ from openai import OpenAI
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PING_URL = "https://telegram-bot-532k.onrender.com/"
+PING_URL = "https://artemwe-ai-bot-e9yo.onrender.com/"
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 app = Flask(__name__)
@@ -38,7 +39,8 @@ def auto_ping():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет 👋 Я Artemwe AI.\nНапиши вопрос — отвечу по-человечески."
+        "👋 Привет! Я Artemwe AI.\n\n"
+        "Пиши, что нужно — разберёмся."
     )
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -58,8 +60,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(response.output_text)
 
     except Exception as e:
-        print("Ошибка OpenAI:", e)
-        await update.message.reply_text("Ошибка, попробуй позже.")
+        traceback.print_exc()
+        await update.message.reply_text(f"Ошибка:\n{e}")
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
