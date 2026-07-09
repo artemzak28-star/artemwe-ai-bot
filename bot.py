@@ -1,18 +1,14 @@
-import os
-import threading
-import time
-import traceback
-import requests
+import os, threading, time, requests, traceback
 from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-from openai import OpenAI
+from google import genai
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 PING_URL = "https://artemwe-ai-bot-e9yo.onrender.com/"
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 app = Flask(__name__)
 
 SYSTEM_PROMPT = """
@@ -39,8 +35,7 @@ def auto_ping():
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Привет! Я Artemwe AI.\n\n"
-        "Пиши, что нужно — разберёмся."
+        "👋 Привет! Я Artemwe AI.\n\nПиши, что нужно — разберёмся."
     )
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -49,19 +44,18 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.chat.send_action("typing")
 
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": text}
-            ]
+        prompt = f"{SYSTEM_PROMPT}\n\nПользователь написал: {text}"
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
         )
 
-        await update.message.reply_text(response.output_text)
+        await update.message.reply_text(response.text)
 
     except Exception as e:
         traceback.print_exc()
-        await update.message.reply_text(f"Ошибка:\n{e}")
+        await update.message.reply_text("⚠️ Сейчас ИИ временно недоступен. Попробуй позже.")
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
@@ -72,7 +66,6 @@ def main():
     threading.Thread(target=auto_ping, daemon=True).start()
 
     bot = ApplicationBuilder().token(BOT_TOKEN).build()
-
     bot.add_handler(CommandHandler("start", start))
     bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
