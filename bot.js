@@ -1,38 +1,81 @@
-const TelegramBot = require("node-telegram-bot-api");
-const OpenAI = require("openai");
+import os
+import threading
+import time
+import requests
+from flask import Flask
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from openai import OpenAI
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PING_URL = "https://telegram-bot-532k.onrender.com/"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+client = OpenAI(api_key=OPENAI_API_KEY)
+app = Flask(__name__)
 
-bot.on("message", async (msg) => {
+SYSTEM_PROMPT = """
+Ты Artemwe — ИИ-помощник Артёма.
+Пиши коротко, по-человечески, на русском.
+Не пиши как ИИ.
+Если человек не прав — спокойно возрази.
+Не оскорбляй, но отвечай уверенно.
+Помогай с Telegram, ботами, GitHub, Render, GMP, Stars и текстами.
+"""
 
-  const chatId = msg.chat.id;
-  const text = msg.text;
+@app.route("/")
+def home():
+    return "Artemwe AI работает ✅"
 
-  if (!text) return;
+def auto_ping():
+    while True:
+        try:
+            requests.get(PING_URL, timeout=15)
+            print("✅ Пинг успешный")
+        except Exception as e:
+            print("❌ Ошибка пинга:", e)
+        time.sleep(240)
 
-  try {
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Привет 👋 Я Artemwe AI.\nНапиши вопрос — отвечу по-человечески."
+    )
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [
-        { role: "system", content: "Ты AI помощник по имени Artemwe." },
-        { role: "user", content: text }
-      ]
-    });
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
 
-    const reply = response.choices[0].message.content;
+    try:
+        await update.message.chat.send_action("typing")
 
-    bot.sendMessage(chatId, reply);
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": text}
+            ]
+        )
 
-  } catch (error) {
+        await update.message.reply_text(response.output_text)
 
-    console.log(error);
-    bot.sendMessage(chatId, "Ошибка AI 🤖");
+    except Exception as e:
+        print("Ошибка OpenAI:", e)
+        await update.message.reply_text("Ошибка, попробуй позже.")
 
-  }
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
-});
+def main():
+    threading.Thread(target=run_flask, daemon=True).start()
+    threading.Thread(target=auto_ping, daemon=True).start()
+
+    bot = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    bot.add_handler(CommandHandler("start", start))
+    bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+
+    print("🤖 Artemwe AI запущен")
+    bot.run_polling()
+
+if __name__ == "__main__":
+    main()
