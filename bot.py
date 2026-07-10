@@ -140,12 +140,16 @@ async def start(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     await update.message.reply_text(
-        "👋 Artemwe запущен.\n\n"
-        "Команды в бизнес-чате:\n"
-        "/mute — замутить\n"
-        "/unmute — снять мут\n"
-        "/trick — включить розыгрыш\n"
-        "/untrick — выключить розыгрыш"
+        "👋 Здравствуйте! Я Artemwe.\n\n"
+        "🤖 Telegram Business бот.\n\n"
+        "📋 Команды:\n"
+        "🔇 /mute — замутить\n"
+        "🔊 /unmute — снять мут\n"
+        "🎭 /trick — включить розыгрыш\n"
+        "❌ /untrick — выключить розыгрыш\n"
+        "📢 /spam 5 Привет — отправить 5 сообщений\n"
+        "📢 /spam 5 10 Привет — отправить 10 сообщений и удалить через 5 сек.\n\n"
+        "🚀 Скоро появятся новые функции!"
     )
 
 
