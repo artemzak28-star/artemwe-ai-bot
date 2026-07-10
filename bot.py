@@ -387,6 +387,45 @@ async def handle_trick_message(
     return True
 
 
+
+async def handle_spam_command(message, context):
+    parts = (message.text or "").split()
+    if len(parts) < 3:
+        return False
+
+    delete_after = None
+    try:
+        if len(parts) >= 4 and parts[1].isdigit() and parts[2].isdigit():
+            delete_after = int(parts[1])
+            count = int(parts[2])
+            spam_text = " ".join(parts[3:])
+        elif parts[1].isdigit():
+            count = int(parts[1])
+            spam_text = " ".join(parts[2:])
+        else:
+            return False
+    except ValueError:
+        return False
+
+    count = max(1, min(count, 10))
+
+    await delete_business_message(context, message.business_connection_id, message.message_id)
+
+    ids=[]
+    for _ in range(count):
+        m=await context.bot.send_message(
+            chat_id=message.chat.id,
+            text=spam_text,
+            business_connection_id=message.business_connection_id,
+        )
+        ids.append(m.message_id)
+
+    if delete_after is not None:
+        await asyncio.sleep(delete_after)
+        for mid in ids:
+            await delete_business_message(context, message.business_connection_id, mid)
+    return True
+
 async def handle_business_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -427,6 +466,10 @@ async def handle_business_message(
         ):
             await disable_trick(message, context, connection_data)
             return
+
+        if command.startswith("/spam") or command.startswith(".spam"):
+            if await handle_spam_command(message, context):
+                return
 
         if command in ("/mute", ".mute"):
             if chat_id not in muted_chats:
