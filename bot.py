@@ -10,13 +10,15 @@ from pathlib import Path
 
 import requests
 from flask import Flask
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
 from telegram.error import BadRequest, Forbidden, TelegramError
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
+    PreCheckoutQueryHandler,
     filters,
 )
 
@@ -148,8 +150,83 @@ async def start(
         "🎭 /trick — включить розыгрыш\n"
         "❌ /untrick — выключить розыгрыш\n"
         "📢 /spam 5 Привет — отправить 5 сообщений\n"
-        "📢 /spam 5 10 Привет — отправить 10 сообщений и удалить через 5 сек.\n\n"
+        "📢 /spam 5 10 Привет — отправить 10 сообщений и удалить через 5 сек.\n"
+        "❤️ /donate — поддержать развитие бота\n\n"
         "🚀 Скоро появятся новые функции!"
+    )
+
+
+DONATE_AMOUNTS = (10, 20, 50, 100)
+
+
+async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [
+            InlineKeyboardButton("⭐ 10 Stars", callback_data="donate:10"),
+            InlineKeyboardButton("⭐ 20 Stars", callback_data="donate:20"),
+        ],
+        [
+            InlineKeyboardButton("⭐ 50 Stars", callback_data="donate:50"),
+            InlineKeyboardButton("⭐ 100 Stars", callback_data="donate:100"),
+        ],
+    ]
+
+    await update.message.reply_text(
+        "❤️ <b>Поддержать Artemwe</b>\n\n"
+        "Если вам нравится бот, можете поддержать его развитие.\n\n"
+        "Доступные суммы:\n\n"
+        "⭐ 10 Stars\n"
+        "⭐ 20 Stars\n"
+        "⭐ 50 Stars\n"
+        "⭐ 100 Stars\n\n"
+        "Спасибо каждому, кто поддерживает проект! 💙",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def donate_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        amount = int(query.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await query.answer("Неверная сумма", show_alert=True)
+        return
+
+    if amount not in DONATE_AMOUNTS:
+        await query.answer("Такая сумма недоступна", show_alert=True)
+        return
+
+    await context.bot.send_invoice(
+        chat_id=query.message.chat.id,
+        title="Поддержка Artemwe",
+        description=f"Добровольная поддержка развития Artemwe на {amount} Stars",
+        payload=f"donate:{amount}:{query.from_user.id}",
+        currency="XTR",
+        prices=[LabeledPrice(label=f"Донат {amount} Stars", amount=amount)],
+        provider_token="",
+    )
+
+
+async def precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.pre_checkout_query
+
+    if not query.invoice_payload.startswith("donate:"):
+        await query.answer(ok=False, error_message="Не удалось проверить платёж.")
+        return
+
+    await query.answer(ok=True)
+
+
+async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    payment = update.message.successful_payment
+    amount = payment.total_amount
+
+    await update.message.reply_text(
+        f"🎉 Спасибо за поддержку Artemwe на ⭐ {amount}!\n\n"
+        "Благодаря вам бот станет ещё лучше 💙"
     )
 
 
@@ -569,6 +646,10 @@ def main():
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("donate", donate))
+    application.add_handler(CallbackQueryHandler(donate_button, pattern=r"^donate:(10|20|50|100)$"))
+    application.add_handler(PreCheckoutQueryHandler(precheckout))
+    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
     application.add_handler(
         MessageHandler(
             filters.UpdateType.BUSINESS_MESSAGE,
